@@ -7405,17 +7405,15 @@ document.head.appendChild(swipeStyle);
 <script>
 // ... ваш существующий код ДО этого места ...
 
-// ===== БЫСТРЫЕ И ПЛАВНЫЕ СВАЙПЫ ВО ВСЕ СТОРОНЫ =====
+// ===== УЛУЧШЕННЫЕ СВАЙПЫ С ПРАВИЛЬНОЙ АНИМАЦИЕЙ =====
 let touchStartX = 0;
 let touchStartY = 0;
 let isSwiping = false;
-let swipeDirection = null;
 
-// Добавляем стили для быстрой анимации
+// Добавляем стили для анимации
 const swipeStyles = `
     .swipeable-page {
-        transition: transform 0.25s cubic-bezier(0.4, 0.0, 0.2, 1) !important;
-        will-change: transform;
+        transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     }
     
     .swipe-hint {
@@ -7429,86 +7427,13 @@ const swipeStyles = `
         border-radius: 20px;
         font-size: 14px;
         opacity: 0;
-        transition: opacity 0.2s ease;
+        transition: opacity 0.3s;
         z-index: 1000;
         pointer-events: none;
     }
     
     .swipe-hint.show {
         opacity: 1;
-    }
-    
-    /* Быстрые анимации */
-    .slide-in-right {
-        animation: slideInRight 0.25s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
-    }
-    
-    .slide-in-left {
-        animation: slideInLeft 0.25s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
-    }
-    
-    .slide-in-top {
-        animation: slideInTop 0.25s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
-    }
-    
-    .slide-in-bottom {
-        animation: slideInBottom 0.25s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
-    }
-    
-    .slide-out-right {
-        animation: slideOutRight 0.25s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
-    }
-    
-    .slide-out-left {
-        animation: slideOutLeft 0.25s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
-    }
-    
-    .slide-out-top {
-        animation: slideOutTop 0.25s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
-    }
-    
-    .slide-out-bottom {
-        animation: slideOutBottom 0.25s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
-    }
-    
-    @keyframes slideInRight {
-        from { transform: translateX(100%); }
-        to { transform: translateX(0); }
-    }
-    
-    @keyframes slideInLeft {
-        from { transform: translateX(-100%); }
-        to { transform: translateX(0); }
-    }
-    
-    @keyframes slideInTop {
-        from { transform: translateY(-100%); }
-        to { transform: translateY(0); }
-    }
-    
-    @keyframes slideInBottom {
-        from { transform: translateY(100%); }
-        to { transform: translateY(0); }
-    }
-    
-    @keyframes slideOutRight {
-        from { transform: translateX(0); }
-        to { transform: translateX(100%); }
-    }
-    
-    @keyframes slideOutLeft {
-        from { transform: translateX(0); }
-        to { transform: translateX(-100%); }
-    }
-    
-    @keyframes slideOutTop {
-        from { transform: translateY(0); }
-        to { transform: translateY(-100%); }
-    }
-    
-    @keyframes slideOutBottom {
-        from { transform: translateY(0); }
-        to { transform: translateY(100%); }
     }
 `;
 
@@ -7529,106 +7454,83 @@ function getCurrentPage() {
     return 'main';
 }
 
-// Быстрая анимация перехода
-function navigateWithQuickAnimation(direction) {
+// Функция для обработки навигации с анимацией
+function navigateToPageWithAnimation(direction) {
     const current = getCurrentPage();
     const cabinetNavItem = document.getElementById('cabinet-nav-item');
     const storageNavItem = document.getElementById('storage-nav-item');
     
+    // Получаем элементы страниц
     const mainPage = document.getElementById('main-page');
     const cabinetPage = document.getElementById('cabinet-page');
     const storagePage = document.getElementById('storage-page');
     
-    // Убираем предыдущие анимации
+    // Добавляем класс анимации
     [mainPage, cabinetPage, storagePage].forEach(page => {
-        if (page) {
-            page.className = page.className.replace(/slide-(in|out)-\w+/g, '');
-            page.classList.add('swipeable-page');
-        }
+        if (page) page.classList.add('swipeable-page');
     });
     
+    // Применяем анимацию в зависимости от направления
     setTimeout(() => {
         switch(current) {
             case 'main':
                 if (direction === 'right') {
-                    // Каюта выезжает слева
-                    cabinetPage.classList.add('slide-in-right');
-                    mainPage.classList.add('slide-out-left');
-                    
+                    // Каюта выезжает СЛЕВА
+                    cabinetPage.style.transform = 'translateX(0)';
+                    mainPage.style.transform = 'translateX(100%)';
                     setTimeout(() => {
                         showPage(cabinetPage);
                         if (cabinetNavItem) updateActiveNav(cabinetNavItem);
-                        resetAnimations();
-                    }, 250);
-                    
-                } else if (direction === 'left') {
-                    // Склад выезжает справа
-                    storagePage.classList.add('slide-in-left');
-                    mainPage.classList.add('slide-out-right');
-                    
+                        resetTransforms();
+                    }, 300);
+                } else {
+                    // Склад выезжает СПРАВА
+                    storagePage.style.transform = 'translateX(0)';
+                    mainPage.style.transform = 'translateX(-100%)';
                     setTimeout(() => {
                         showPage(storagePage);
                         if (storageNavItem) updateActiveNav(storageNavItem);
-                        resetAnimations();
-                    }, 250);
-                    
-                } else if (direction === 'up') {
-                    // Быстрая анимация вверх (можно для новой страницы)
-                    mainPage.classList.add('slide-out-top');
-                    setTimeout(() => {
-                        // Здесь можно добавить логику для новой страницы
-                        console.log('Quick swipe up');
-                        resetAnimations();
-                    }, 250);
-                    
-                } else if (direction === 'down') {
-                    // Быстрая анимация вниз
-                    mainPage.classList.add('slide-out-bottom');
-                    setTimeout(() => {
-                        console.log('Quick swipe down');
-                        resetAnimations();
-                    }, 250);
+                        resetTransforms();
+                    }, 300);
                 }
                 break;
                 
             case 'cabinet':
                 if (direction === 'left') {
-                    // Возврат на главную - каюта уезжает влево
-                    mainPage.classList.add('slide-in-left');
-                    cabinetPage.classList.add('slide-out-left');
-                    
+                    // Возврат на главную - каюта уезжает ВЛЕВО
+                    mainPage.style.transform = 'translateX(0)';
+                    cabinetPage.style.transform = 'translateX(-100%)';
                     setTimeout(() => {
                         showPage(mainPage);
                         updateActiveNav(null);
-                        resetAnimations();
-                    }, 250);
+                        resetTransforms();
+                    }, 300);
                 }
                 break;
                 
             case 'storage':
                 if (direction === 'right') {
-                    // Возврат на главную - склад уезжает вправо
-                    mainPage.classList.add('slide-in-right');
-                    storagePage.classList.add('slide-out-right');
-                    
+                    // Возврат на главную - склад уезжает ВПРАВО
+                    mainPage.style.transform = 'translateX(0)';
+                    storagePage.style.transform = 'translateX(100%)';
                     setTimeout(() => {
                         showPage(mainPage);
                         updateActiveNav(null);
-                        resetAnimations();
-                    }, 250);
+                        resetTransforms();
+                    }, 300);
                 }
                 break;
         }
         
-        // Быстрая вибрация
+        // Вибрация для подтверждения действия
         if (typeof triggerVibration === 'function') {
-            setTimeout(triggerVibration, 50);
+            triggerVibration();
         }
     }, 10);
 }
 
-// Сброс анимаций
-function resetAnimations() {
+// Сброс трансформаций
+function resetTransforms() {
     const mainPage = document.getElementById('main-page');
     const cabinetPage = document.getElementById('cabinet-page');
     const storagePage = document.getElementById('storage-page');
@@ -7636,7 +7538,6 @@ function resetAnimations() {
     [mainPage, cabinetPage, storagePage].forEach(page => {
         if (page) {
             page.style.transform = '';
-            page.className = page.className.replace(/slide-(in|out)-\w+/g, '');
             page.classList.remove('swipeable-page');
         }
     });
@@ -7659,45 +7560,23 @@ function canSwipeOnElement(element) {
     return true;
 }
 
-// Определение направления свайпа
-function getSwipeDirection(deltaX, deltaY) {
-    const absDeltaX = Math.abs(deltaX);
-    const absDeltaY = Math.abs(deltaY);
-    
-    if (absDeltaX > absDeltaY && absDeltaX > 20) {
-        return deltaX > 0 ? 'right' : 'left';
-    } else if (absDeltaY > absDeltaX && absDeltaY > 20) {
-        return deltaY > 0 ? 'down' : 'up';
-    }
-    return null;
-}
-
-// Обработчики касаний для быстрых свайпов
+// Обработчики касаний для свайпов
 document.addEventListener('touchstart', function(e) {
     if (!canSwipeOnElement(e.target)) return;
     
     touchStartX = e.touches[0].clientX;
     touchStartY = e.touches[0].clientY;
     isSwiping = true;
-    swipeDirection = null;
 });
 
 document.addEventListener('touchmove', function(e) {
     if (!isSwiping) return;
     
     const touchX = e.touches[0].clientX;
-    const touchY = e.touches[0].clientY;
-    
     const deltaX = touchX - touchStartX;
-    const deltaY = touchY - touchStartY;
     
-    // Быстро определяем направление
-    if (!swipeDirection) {
-        swipeDirection = getSwipeDirection(deltaX, deltaY);
-    }
-    
-    // Блокируем скролл при определении направления
-    if (swipeDirection && Math.abs(deltaX) > 10) {
+    // Если это горизонтальный свайп
+    if (Math.abs(deltaX) > 10) {
         e.preventDefault();
     }
 });
@@ -7712,22 +7591,21 @@ document.addEventListener('touchend', function(e) {
     const deltaX = touchX - touchStartX;
     const deltaY = touchY - touchStartY;
     
-    const distance = Math.max(Math.abs(deltaX), Math.abs(deltaY));
-    
-    // Быстрое срабатывание при коротком свайпе
-    if (distance > 40 && swipeDirection) {
-        navigateWithQuickAnimation(swipeDirection);
+    // Проверяем, что это был горизонтальный свайп
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+        const direction = deltaX > 0 ? 'right' : 'left';
+        navigateToPageWithAnimation(direction);
         e.preventDefault();
     }
 });
 
-// Показываем подсказку
+// Показываем подсказку о возможности свайпа при первом посещении
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(function() {
         if (!localStorage.getItem('swipeHintShown')) {
             const swipeHint = document.createElement('div');
             swipeHint.className = 'swipe-hint show';
-            swipeHint.textContent = '↔️ Быстрые свайпы в любую сторону';
+            swipeHint.textContent = '← Свайпните для навигации →';
             document.body.appendChild(swipeHint);
             
             setTimeout(function() {
@@ -7737,13 +7615,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         swipeHint.parentNode.removeChild(swipeHint);
                     }
                     localStorage.setItem('swipeHintShown', 'true');
-                }, 200);
-            }, 2000);
+                }, 300);
+            }, 3000);
         }
-    }, 1000);
+    }, 2000);
 });
 
 // ... ваш существующий код ПОСЛЕ этого места ...
 </script>
+
 </body>
 </html>

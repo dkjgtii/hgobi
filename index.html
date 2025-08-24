@@ -7405,13 +7405,13 @@ document.head.appendChild(swipeStyle);
 <script>
 // ... ваш существующий код ДО этого места ...
 
-// ===== СОВМЕСТИМЫЕ СВАЙПЫ ДЛЯ IOS И ANDROID =====
+// ===== ФИКС ДЛЯ IOS БЕЗ ИЗМЕНЕНИЯ СТРУКТУРЫ =====
 var touchStartX = 0;
 var touchStartY = 0;
 var isSwiping = false;
 
 // Безопасное добавление стилей
-var swipeStyles = '.swipeable-page { transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); } .swipe-hint { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.7); color: white; padding: 8px 16px; border-radius: 20px; font-size: 14px; opacity: 0; transition: opacity 0.3s; z-index: 1000; pointer-events: none; } .swipe-hint.show { opacity: 1; }';
+var swipeStyles = '.swipeable-page { transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); -webkit-transition: -webkit-transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); } .swipe-hint { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); -webkit-transform: translateX(-50%); background: rgba(0, 0, 0, 0.7); color: white; padding: 8px 16px; border-radius: 20px; font-size: 14px; opacity: 0; transition: opacity 0.3s; -webkit-transition: opacity 0.3s; z-index: 1000; pointer-events: none; } .swipe-hint.show { opacity: 1; }';
 
 var styleElement = document.createElement('style');
 styleElement.textContent = swipeStyles;
@@ -7423,9 +7423,10 @@ function getCurrentPage() {
     var cabinetPage = document.getElementById('cabinet-page');
     var storagePage = document.getElementById('storage-page');
     
-    if (mainPage && mainPage.style.display !== 'none') return 'main';
-    if (cabinetPage && cabinetPage.style.display !== 'none') return 'cabinet';
-    if (storagePage && storagePage.style.display !== 'none') return 'storage';
+    // Безопасная проверка видимости
+    if (mainPage && mainPage.offsetParent !== null) return 'main';
+    if (cabinetPage && cabinetPage.offsetParent !== null) return 'cabinet';
+    if (storagePage && storagePage.offsetParent !== null) return 'storage';
     return 'main';
 }
 
@@ -7440,6 +7441,9 @@ function navigateToPageWithAnimation(direction) {
     var cabinetPage = document.getElementById('cabinet-page');
     var storagePage = document.getElementById('storage-page');
     
+    // Сохраняем оригинальные позиции перед анимацией
+    saveOriginalPositions();
+    
     // Добавляем класс анимации
     var pages = [mainPage, cabinetPage, storagePage];
     for (var i = 0; i < pages.length; i++) {
@@ -7448,83 +7452,149 @@ function navigateToPageWithAnimation(direction) {
         }
     }
     
-    // Применяем анимацию в зависимости от направления
+    // Применяем анимацию
     setTimeout(function() {
         switch(current) {
             case 'main':
-                if (direction === 'right') {
+                if (direction === 'right' && cabinetPage) {
                     // Каюта выезжает СЛЕВА
-                    if (cabinetPage) cabinetPage.style.transform = 'translateX(0)';
-                    if (mainPage) mainPage.style.transform = 'translateX(100%)';
+                    cabinetPage.style.transform = 'translateX(0)';
+                    cabinetPage.style.webkitTransform = 'translateX(0)';
+                    if (mainPage) {
+                        mainPage.style.transform = 'translateX(100%)';
+                        mainPage.style.webkitTransform = 'translateX(100%)';
+                    }
+                    
                     setTimeout(function() {
-                        if (typeof showPage === 'function' && cabinetPage) {
-                            showPage(cabinetPage);
-                            if (cabinetNavItem && typeof updateActiveNav === 'function') {
-                                updateActiveNav(cabinetNavItem);
-                            }
-                        }
+                        safeShowPage(cabinetPage);
+                        if (cabinetNavItem) safeUpdateActiveNav(cabinetNavItem);
                         resetTransforms();
                     }, 300);
-                } else {
+                } else if (direction === 'left' && storagePage) {
                     // Склад выезжает СПРАВА
-                    if (storagePage) storagePage.style.transform = 'translateX(0)';
-                    if (mainPage) mainPage.style.transform = 'translateX(-100%)';
+                    storagePage.style.transform = 'translateX(0)';
+                    storagePage.style.webkitTransform = 'translateX(0)';
+                    if (mainPage) {
+                        mainPage.style.transform = 'translateX(-100%)';
+                        mainPage.style.webkitTransform = 'translateX(-100%)';
+                    }
+                    
                     setTimeout(function() {
-                        if (typeof showPage === 'function' && storagePage) {
-                            showPage(storagePage);
-                            if (storageNavItem && typeof updateActiveNav === 'function') {
-                                updateActiveNav(storageNavItem);
-                            }
-                        }
+                        safeShowPage(storagePage);
+                        if (storageNavItem) safeUpdateActiveNav(storageNavItem);
                         resetTransforms();
                     }, 300);
                 }
                 break;
                 
             case 'cabinet':
-                if (direction === 'left') {
-                    // Возврат на главную - каюта уезжает ВЛЕВО
-                    if (mainPage) mainPage.style.transform = 'translateX(0)';
-                    if (cabinetPage) cabinetPage.style.transform = 'translateX(-100%)';
+                if (direction === 'left' && mainPage) {
+                    // Возврат на главную
+                    mainPage.style.transform = 'translateX(0)';
+                    mainPage.style.webkitTransform = 'translateX(0)';
+                    if (cabinetPage) {
+                        cabinetPage.style.transform = 'translateX(-100%)';
+                        cabinetPage.style.webkitTransform = 'translateX(-100%)';
+                    }
+                    
                     setTimeout(function() {
-                        if (typeof showPage === 'function' && mainPage) {
-                            showPage(mainPage);
-                            if (typeof updateActiveNav === 'function') {
-                                updateActiveNav(null);
-                            }
-                        }
+                        safeShowPage(mainPage);
+                        safeUpdateActiveNav(null);
                         resetTransforms();
                     }, 300);
                 }
                 break;
                 
             case 'storage':
-                if (direction === 'right') {
-                    // Возврат на главную - склад уезжает ВПРАВО
-                    if (mainPage) mainPage.style.transform = 'translateX(0)';
-                    if (storagePage) storagePage.style.transform = 'translateX(100%)';
+                if (direction === 'right' && mainPage) {
+                    // Возврат на главную
+                    mainPage.style.transform = 'translateX(0)';
+                    mainPage.style.webkitTransform = 'translateX(0)';
+                    if (storagePage) {
+                        storagePage.style.transform = 'translateX(100%)';
+                        storagePage.style.webkitTransform = 'translateX(100%)';
+                    }
+                    
                     setTimeout(function() {
-                        if (typeof showPage === 'function' && mainPage) {
-                            showPage(mainPage);
-                            if (typeof updateActiveNav === 'function') {
-                                updateActiveNav(null);
-                            }
-                        }
+                        safeShowPage(mainPage);
+                        safeUpdateActiveNav(null);
                         resetTransforms();
                     }, 300);
                 }
                 break;
         }
         
-        // Вибрация для подтверждения действия
-        if (typeof triggerVibration === 'function') {
-            try {
-                triggerVibration();
-            } catch (e) {
-                console.log('Vibration not supported');
-            }
-        }
+        // Вибрация
+        safeTriggerVibration();
     }, 10);
+}
+
+// Безопасные версии функций
+function safeShowPage(page) {
+    if (page && typeof showPage === 'function') {
+        try {
+            showPage(page);
+        } catch (e) {
+            console.log('Show page error:', e);
+            // Fallback: прячем все страницы и показываем нужную
+            var allPages = [document.getElementById('main-page'), 
+                          document.getElementById('cabinet-page'), 
+                          document.getElementById('storage-page')];
+            for (var i = 0; i < allPages.length; i++) {
+                if (allPages[i]) allPages[i].style.display = 'none';
+            }
+            page.style.display = 'block';
+        }
+    }
+}
+
+function safeUpdateActiveNav(navItem) {
+    if (typeof updateActiveNav === 'function') {
+        try {
+            updateActiveNav(navItem);
+        } catch (e) {
+            console.log('Update nav error:', e);
+        }
+    }
+}
+
+function safeTriggerVibration() {
+    if (typeof triggerVibration === 'function') {
+        try {
+            triggerVibration();
+        } catch (e) {
+            console.log('Vibration error:', e);
+        }
+    }
+}
+
+// Сохраняем оригинальные позиции
+function saveOriginalPositions() {
+    var pages = [document.getElementById('main-page'), 
+                document.getElementById('cabinet-page'), 
+                document.getElementById('storage-page')];
+    
+    for (var i = 0; i < pages.length; i++) {
+        if (pages[i]) {
+            pages[i].dataset.originalDisplay = pages[i].style.display || '';
+            pages[i].dataset.originalTransform = pages[i].style.transform || '';
+        }
+    }
+}
+
+// Восстанавливаем оригинальные позиции
+function restoreOriginalPositions() {
+    var pages = [document.getElementById('main-page'), 
+                document.getElementById('cabinet-page'), 
+                document.getElementById('storage-page')];
+    
+    for (var i = 0; i < pages.length; i++) {
+        if (pages[i] && pages[i].dataset.originalDisplay !== undefined) {
+            pages[i].style.display = pages[i].dataset.originalDisplay;
+            pages[i].style.transform = pages[i].dataset.originalTransform;
+            pages[i].style.webkitTransform = pages[i].dataset.originalTransform;
+        }
+    }
 }
 
 // Сброс трансформаций
@@ -7537,14 +7607,18 @@ function resetTransforms() {
     for (var i = 0; i < pages.length; i++) {
         if (pages[i]) {
             pages[i].style.transform = '';
+            pages[i].style.webkitTransform = '';
             pages[i].classList.remove('swipeable-page');
         }
     }
+    
+    // Восстанавливаем на случай если что-то сломалось
+    setTimeout(restoreOriginalPositions, 100);
 }
 
 // Проверка можно ли свайпать на элементе
 function canSwipeOnElement(element) {
-    if (!element || !element.closest) return false;
+    if (!element || typeof element.closest !== 'function') return false;
     
     var forbiddenElements = ['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT', 'A'];
     if (forbiddenElements.includes(element.tagName)) return false;
@@ -7560,27 +7634,26 @@ function canSwipeOnElement(element) {
 }
 
 // Обработчики касаний для свайпов
-document.addEventListener('touchstart', function(e) {
+function handleTouchStart(e) {
     if (!canSwipeOnElement(e.target)) return;
     
     touchStartX = e.touches[0].clientX;
     touchStartY = e.touches[0].clientY;
     isSwiping = true;
-}, { passive: true });
+}
 
-document.addEventListener('touchmove', function(e) {
+function handleTouchMove(e) {
     if (!isSwiping) return;
     
     var touchX = e.touches[0].clientX;
     var deltaX = touchX - touchStartX;
     
-    // Если это горизонтальный свайп
     if (Math.abs(deltaX) > 10) {
         e.preventDefault();
     }
-}, { passive: false });
+}
 
-document.addEventListener('touchend', function(e) {
+function handleTouchEnd(e) {
     if (!isSwiping) return;
     isSwiping = false;
     
@@ -7590,22 +7663,35 @@ document.addEventListener('touchend', function(e) {
     var deltaX = touchX - touchStartX;
     var deltaY = touchY - touchStartY;
     
-    // Проверяем, что это был горизонтальный свайп
     if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
         var direction = deltaX > 0 ? 'right' : 'left';
         navigateToPageWithAnimation(direction);
         e.preventDefault();
     }
-}, { passive: true });
+}
 
-// Показываем подсказку о возможности свайпа при первом посещении
+// Безопасная регистрация событий
+try {
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd, { passive: true });
+} catch (e) {
+    console.log('Event listener error:', e);
+}
+
+// Показываем подсказку
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(function() {
         if (!localStorage.getItem('swipeHintShown')) {
             var swipeHint = document.createElement('div');
-            swipeHint.className = 'swipe-hint show';
+            swipeHint.className = 'swipe-hint';
             swipeHint.textContent = '← Свайпните для навигации →';
             document.body.appendChild(swipeHint);
+            
+            // Показываем с задержкой
+            setTimeout(function() {
+                swipeHint.className = 'swipe-hint show';
+            }, 100);
             
             setTimeout(function() {
                 swipeHint.className = 'swipe-hint';
